@@ -1,4 +1,5 @@
-import { Controller, Post, Body, Res} from '@nestjs/common';
+import { Controller, Post, Body, Res, UseGuards } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 import { RegisterUserDto } from './dtos/RegisterUser.dto';
 import { Response } from 'express';
@@ -16,7 +17,10 @@ export class AuthController {
     @Body() body: { email: string; password: string },
     @Res({ passthrough: true }) res: Response,
   ) {
-    const { user, token } = await this.authService.login(body.email, body.password);
+    const { user, token } = await this.authService.login(
+      body.email,
+      body.password,
+    );
 
     res.cookie('token', token, {
       httpOnly: true,
@@ -26,5 +30,18 @@ export class AuthController {
     });
 
     return { message: 'Login successful', user };
+  }
+
+  @Post('logout')
+  @UseGuards(AuthGuard('jwt'))
+  logout(@Res({ passthrough: true }) res: Response) {
+    // Clear the httpOnly cookie
+    res.clearCookie('token', {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: false, // set to true in production (HTTPS)
+    });
+
+    return { message: 'Logout successful', ok: true };
   }
 }
